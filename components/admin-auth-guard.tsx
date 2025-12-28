@@ -22,10 +22,25 @@ export default function AdminAuthGuard({
       }
     })
 
-    return () => unsub()
+    // 🛑 SAFETY FALLBACK (MOST IMPORTANT)
+    const timer = setTimeout(() => {
+      setLoading(false)
+    }, 3000)
+
+    return () => {
+      unsub()
+      clearTimeout(timer)
+    }
   }, [router])
 
-  if (loading) return null   // 👈 THIS is important
+  // ✅ NEVER return null in production
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p>Checking authentication…</p>
+      </div>
+    )
+  }
 
   return <>{children}</>
 }
