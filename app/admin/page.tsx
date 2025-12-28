@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import AdminAuthGuard from "@/components/admin-auth-guard"
+
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { IncidentCard } from "@/components/incident-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,11 +10,19 @@ import { AlertTriangle, Heart, Clock, CheckCircle } from "lucide-react"
 import { getIncidents, Incident, dispatchIncident } from "@/lib/firestore"
 import { getAverageResponseTime } from "@/lib/analytics"
 
-export default function AdminDashboard() {
+export default function AdminPage() {
+  return (
+    <AdminAuthGuard>
+      <AdminDashboard />
+    </AdminAuthGuard>
+  )
+}
+
+/* ================= DASHBOARD ================= */
+
+function AdminDashboard() {
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [loading, setLoading] = useState(true)
-
-  // ✅ RESPONSE TIME STATE
   const [avgResponseTime, setAvgResponseTime] = useState<number | null>(null)
 
   useEffect(() => {
@@ -24,7 +34,6 @@ export default function AdminDashboard() {
     load()
   }, [])
 
-  // ✅ LOAD AVG RESPONSE TIME
   useEffect(() => {
     getAverageResponseTime().then(setAvgResponseTime)
   }, [])
@@ -40,7 +49,6 @@ export default function AdminDashboard() {
     const updated = await getIncidents()
     setIncidents(updated)
 
-    // refresh response time after new completion
     const time = await getAverageResponseTime()
     setAvgResponseTime(time)
   }
@@ -62,24 +70,19 @@ export default function AdminDashboard() {
             value={pending.length}
             icon={<AlertTriangle className="text-red-500 w-4 h-4" />}
           />
-
           <Stat
             title="Active"
             value={active.length}
             icon={<Heart className="text-green-600 w-4 h-4" />}
           />
-
           <Stat
             title="Completed"
             value={completed.length}
             icon={<CheckCircle className="text-green-600 w-4 h-4" />}
           />
-
           <Stat
             title="Response Time"
-            value={
-              avgResponseTime === null ? "—" : `${avgResponseTime}m`
-            }
+            value={avgResponseTime === null ? "—" : `${avgResponseTime}m`}
             icon={<Clock className="text-blue-600 w-4 h-4" />}
           />
         </div>
