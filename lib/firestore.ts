@@ -7,7 +7,11 @@ import {
   orderBy,
   doc,
   updateDoc,
+  where,
+  limit,
+  serverTimestamp,
 } from "firebase/firestore"
+// import {db} from "./firestore"
 
 /* ---------- FIREBASE INIT ---------- */
 const firebaseConfig = {
@@ -42,6 +46,41 @@ export interface Incident {
 }
 
 /* ---------- FETCH INCIDENTS ---------- */
+export async function getTeams() {
+  const q = query(
+    collection(db, "users"),
+    where("role", "==", "team")
+  )
+
+  const snap = await getDocs(q)
+
+  return snap.docs.map((doc) => ({
+    uid: doc.id,
+    ...doc.data(),
+  }))
+}
+export async function assignTeamToIncident(
+  incidentId: string,
+  teamId: string,
+  teamUid: string
+) {
+  // assign incident to team
+  await updateDoc(doc(db, "incidents", incidentId), {
+    assignedTo: teamId,
+    status: "dispatched",
+    progress: {
+      teamAssigned: true,
+      teamReached: false,
+      animalSecured: false,
+    },
+  })
+
+  // mark team busy
+  await updateDoc(doc(db, "users", teamUid), {
+    available: false,
+  })
+}
+
 export async function getIncidents(): Promise<Incident[]> {
   const q = query(
     collection(db, "incidents"),
@@ -72,6 +111,36 @@ export async function getIncidents(): Promise<Incident[]> {
     }
   })
 }
+export async function getAssignedIncident() {
+  const q = query(
+    collection(db, "incidents"),
+    where("assignedTo", "==", "teamID"),
+    where("status", "in", ["dispatched", "in-progress"]),
+    limit(1)
+  )
+
+  const snap = await getDocs(q)
+
+  if (snap.empty) return null
+
+  const docSnap = snap.docs[0]
+
+  return {
+    id: docSnap.id,
+    ...(docSnap.data() as any),
+  }
+}
+
+export async function updateIncidentStatus(
+  id: string,
+  status: string
+) {
+  await updateDoc(doc(db, "incidents", id), {
+    status,
+    updatedAt: serverTimestamp(),
+  })
+}
+
 
 
 /* ---------- DISPATCH INCIDENT ---------- */

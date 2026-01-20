@@ -2,12 +2,18 @@
 
 import { useEffect, useState } from "react"
 import AdminAuthGuard from "@/components/admin-auth-guard"
-
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { IncidentCard } from "@/components/incident-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertTriangle, Heart, Clock, CheckCircle } from "lucide-react"
-import { getIncidents, Incident, dispatchIncident } from "@/lib/firestore"
+import { AlertTriangle, Heart, Clock, CheckCircle, Users } from "lucide-react"
+
+import {
+  getIncidents,
+  Incident,
+  dispatchIncident,
+  getTeams,
+  assignTeamToIncident,
+} from "@/lib/firestore"
 import { getAverageResponseTime } from "@/lib/analytics"
 
 export default function AdminPage() {
@@ -22,13 +28,17 @@ export default function AdminPage() {
 
 function AdminDashboard() {
   const [incidents, setIncidents] = useState<Incident[]>([])
+  const [teams, setTeams] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [avgResponseTime, setAvgResponseTime] = useState<number | null>(null)
 
   useEffect(() => {
     async function load() {
-      const data = await getIncidents()
-      setIncidents(data)
+      const incidentData = await getIncidents()
+      const teamData = await getTeams()
+
+      setIncidents(incidentData)
+      setTeams(teamData)
       setLoading(false)
     }
     load()
@@ -44,13 +54,28 @@ function AdminDashboard() {
   )
   const completed = incidents.filter((i) => i.status === "resolved")
 
-  const handleDispatch = async (id: string) => {
-    await dispatchIncident(id)
-    const updated = await getIncidents()
-    setIncidents(updated)
+  const freeTeams = teams.filter((t) => t.available)
+  const busyTeams = teams.filter((t) => !t.available)
 
-    const time = await getAverageResponseTime()
-    setAvgResponseTime(time)
+  const handleAssign = async (incidentId: string) => {
+    if (freeTeams.length === 0) {
+      alert("No free teams available")
+      return
+    }
+
+    const team = freeTeams[0] // auto-pick first free team
+
+    await assignTeamToIncident(
+      incidentId,
+      team.teamID,
+      team.uid
+    )
+
+    const updatedIncidents = await getIncidents()
+    const updatedTeams = await getTeams()
+
+    setIncidents(updatedIncidents)
+    setTeams(updatedTeams)
   }
 
   return (
@@ -64,7 +89,7 @@ function AdminDashboard() {
         </p>
 
         {/* ================= STATS ================= */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <Stat
             title="Pending"
             value={pending.length}
@@ -81,16 +106,21 @@ function AdminDashboard() {
             icon={<CheckCircle className="text-green-600 w-4 h-4" />}
           />
           <Stat
-            title="Response Time"
-            value={avgResponseTime === null ? "—" : `${avgResponseTime}m`}
-            icon={<Clock className="text-blue-600 w-4 h-4" />}
+            title="Free Teams"
+            value={freeTeams.length}
+            icon={<Users className="text-blue-600 w-4 h-4" />}
+          />
+          <Stat
+            title="Busy Teams"
+            value={busyTeams.length}
+            icon={<Clock className="text-orange-500 w-4 h-4" />}
           />
         </div>
 
         {/* ================= INCIDENT LIST ================= */}
         <Card>
           <CardHeader>
-            <CardTitle>New Incidents</CardTitle>
+            <CardTitle>Pending Incidents</CardTitle>
           </CardHeader>
 
           <CardContent>
@@ -101,19 +131,27 @@ function AdminDashboard() {
             ) : (
               <div className="space-y-4">
                 {pending.map((incident) => (
-                  <IncidentCard
-                    key={incident.id}
-                    id={incident.id}
-                    category={incident.type}
-                    status={incident.status}
-                    description={incident.description}
-                    latitude={incident.latitude}
-                    longitude={incident.longitude}
-                    reportedAt={incident.createdAt}
-                    address={incident.address}
-                    photo={incident.photo}
-                    onDispatch={() => handleDispatch(incident.id)}
-                  />
+                  <div key={incident.id} className="space-y-2">
+                    <IncidentCard
+                      id={incident.id}
+                      category={incident.type}
+                      status={incident.status}
+                      description={incident.description}
+                      latitude={incident.latitude}
+                      longitude={incident.longitude}
+                      reportedAt={incident.createdAt}
+                      address={incident.address}
+                      photo={incident.photo}
+                    />
+
+                    {/* ASSIGN TEAM BUTTON */}
+                    <button
+                      onClick={() => handleAssign(incident.id)}
+                      className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+                    >
+                      Assign Team {freeTeams[0]?.teamID ?? ""}
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
