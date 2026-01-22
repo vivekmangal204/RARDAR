@@ -111,25 +111,24 @@ export async function getIncidents(): Promise<Incident[]> {
     }
   })
 }
-export async function getAssignedIncident() {
+
+export async function getAssignedIncident(teamID: string) {
   const q = query(
     collection(db, "incidents"),
-    where("assignedTo", "==", "teamID"),
+    where("assignedTo", "==", teamID),
     where("status", "in", ["dispatched", "in-progress"]),
     limit(1)
   )
 
   const snap = await getDocs(q)
-
   if (snap.empty) return null
 
-  const docSnap = snap.docs[0]
-
   return {
-    id: docSnap.id,
-    ...(docSnap.data() as any),
+    id: snap.docs[0].id,
+    ...(snap.docs[0].data() as any),
   }
 }
+
 
 export async function updateIncidentStatus(
   id: string,

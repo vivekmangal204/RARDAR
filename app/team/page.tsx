@@ -36,23 +36,23 @@ function TeamDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function load() {
-      // wait for auth to finish
-      if (authLoading) return
+    // wait until auth finishes
+    if (authLoading) return
 
-      // no team assigned
-      if (!teamID) {
-        setIncident(null)
-        setLoading(false)
-        return
-      }
+    // no teamID means no assignment possible
+    if (!teamID) {
+      setIncident(null)
+      setLoading(false)
+      return
+    }
 
-      const data = await getAssignedIncident(teamID)
+    async function loadIncident() {
+      const data = await getAssignedIncident(teamID!)
       setIncident(data)
       setLoading(false)
     }
 
-    load()
+    loadIncident()
   }, [teamID, authLoading])
 
   if (loading) {
@@ -78,9 +78,9 @@ function TeamDashboard() {
   }
 
   const finishRescue = async () => {
-    if (!user?.uid) return
+    if (!user) return   // ✅ FIXED: no user.uid direct access
 
-    await completeIncident(incident.id, user?.uid)
+    await completeIncident(incident.id)
     alert("Rescue completed")
     setIncident(null)
   }
