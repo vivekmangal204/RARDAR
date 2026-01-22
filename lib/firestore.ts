@@ -169,13 +169,20 @@ export async function updateIncidentProgress(
   })
 }
 
-
-export async function completeIncident(id: string) {
-  const ref = doc(db, "incidents", id)
-
-  await updateDoc(ref, {
+export async function completeIncident(
+  incidentId: string,
+  teamUid: string
+) {
+  // mark incident resolved
+  await updateDoc(doc(db, "incidents", incidentId), {
     status: "resolved",
     completedAt: new Date(),
   })
+
+  // mark team free again
+  await updateDoc(doc(db, "users", teamUid), {
+    available: true,
+  })
 }
+
 
