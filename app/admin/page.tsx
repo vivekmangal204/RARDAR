@@ -149,7 +149,7 @@ function AdminDashboard() {
                       onClick={() => handleAssign(incident.id)}
                       className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
                     >
-                      Assign Team {freeTeams[0]?.teamID ?? ""}
+                      Assign {freeTeams[0]?.teamID ?? ""}
                     </button>
                   </div>
                 ))}
